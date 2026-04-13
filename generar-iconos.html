@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<!--
+  GENERADOR DE ÍCONOS PNG para el manifest PWA.
+  Abre este archivo en Chrome → haz clic en los botones → descarga los PNGs
+  → colócalos en assets/icon-192.png y assets/icon-512.png
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Generar íconos UNISPAN</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 32px; background: #f4f6f8; }
+    h2   { color: #003D7C; margin-bottom: 24px; }
+    .btn { padding: 12px 24px; background: #003D7C; color: white; border: none;
+           border-radius: 8px; font-size: 1rem; cursor: pointer; margin: 8px; }
+    .btn:hover { background: #1A5CA0; }
+    canvas { display: block; margin: 16px 0; border: 1px solid #dee2e6; border-radius: 8px; }
+    p { color: #6c757d; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h2>Generador de Íconos PNG — UNISPAN Bitácora</h2>
+  <p>Haz clic en cada botón para descargar el ícono correspondiente.</p>
+  <p>Coloca los archivos descargados en la carpeta <code>assets/</code>.</p>
+
+  <button class="btn" onclick="generarYDescargar(192)">⬇ Descargar icon-192.png</button>
+  <button class="btn" onclick="generarYDescargar(512)">⬇ Descargar icon-512.png</button>
+
+  <canvas id="preview" width="192" height="192"></canvas>
+
+  <script>
+    function dibujarIcono(ctx, size) {
+      const r = size * 0.15; // border radius approx
+
+      // Fondo azul
+      ctx.fillStyle = '#003D7C';
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, r);
+      ctx.fill();
+
+      // Franja naranja inferior
+      ctx.fillStyle = '#F5821F';
+      ctx.fillRect(0, size * 0.82, size, size * 0.18);
+
+      // Clip para mantener bordes redondeados
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, r);
+      ctx.clip();
+
+      // Columna izquierda
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.roundRect(size*0.18, size*0.18, size*0.07, size*0.52, size*0.02);
+      ctx.fill();
+
+      // Columna derecha
+      ctx.beginPath();
+      ctx.roundRect(size*0.75, size*0.18, size*0.07, size*0.52, size*0.02);
+      ctx.fill();
+
+      // Trabe superior (naranja)
+      ctx.fillStyle = '#F5821F';
+      ctx.beginPath();
+      ctx.roundRect(size*0.18, size*0.18, size*0.64, size*0.08, size*0.02);
+      ctx.fill();
+
+      // Trabes intermedias
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
+      ctx.beginPath();
+      ctx.roundRect(size*0.18, size*0.38, size*0.64, size*0.06, size*0.015);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(size*0.18, size*0.54, size*0.64, size*0.06, size*0.015);
+      ctx.fill();
+
+      // Base horizontal
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.roundRect(size*0.15, size*0.68, size*0.70, size*0.05, size*0.015);
+      ctx.fill();
+
+      // Texto UNISPAN
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `900 ${size*0.095}px "Arial Black", Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('UNISPAN', size/2, size*0.91);
+
+      ctx.restore();
+    }
+
+    function generarYDescargar(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width  = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      dibujarIcono(ctx, size);
+
+      // Preview
+      const preview = document.getElementById('preview');
+      preview.width  = size > 256 ? 256 : size;
+      preview.height = size > 256 ? 256 : size;
+      const pCtx = preview.getContext('2d');
+      pCtx.drawImage(canvas, 0, 0, preview.width, preview.height);
+
+      // Descargar
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `icon-${size}.png`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+      }, 'image/png');
+    }
+
+    // Mostrar preview inicial
+    window.onload = () => {
+      const preview = document.getElementById('preview');
+      const ctx = preview.getContext('2d');
+      dibujarIcono(ctx, 192);
+    };
+  </script>
+</body>
+</html>

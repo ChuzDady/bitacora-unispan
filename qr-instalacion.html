@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instalar App — UNISPAN Bitácora</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #F0F4F8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+      width: 100%;
+      max-width: 420px;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      background: #003D7C;
+      border-bottom: 4px solid #F97316;
+      padding: 24px 20px 20px;
+      text-align: center;
+    }
+    .header-logo {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    }
+    .header-sub {
+      font-size: 0.78rem;
+      color: #93C5FD;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* QR area */
+    .qr-section {
+      padding: 28px 20px 20px;
+      text-align: center;
+    }
+    .qr-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #003D7C;
+      margin-bottom: 6px;
+    }
+    .qr-sub {
+      font-size: 0.78rem;
+      color: #64748B;
+      margin-bottom: 20px;
+    }
+    .qr-wrapper {
+      display: inline-block;
+      padding: 12px;
+      border: 3px solid #003D7C;
+      border-radius: 12px;
+      background: #fff;
+      margin-bottom: 16px;
+    }
+    .qr-wrapper img {
+      display: block;
+      width: 220px;
+      height: 220px;
+    }
+    .url-chip {
+      display: inline-block;
+      background: #EFF6FF;
+      border: 1px solid #BFDBFE;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 0.72rem;
+      color: #1E40AF;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    /* Pasos */
+    .steps-section {
+      padding: 0 20px 20px;
+    }
+    .steps-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #64748B;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #003D7C;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-text {
+      font-size: 0.82rem;
+      color: #374151;
+      line-height: 1.45;
+      padding-top: 3px;
+    }
+    .step-text strong {
+      color: #003D7C;
+    }
+
+    /* Footer */
+    .footer {
+      background: #F8FAFC;
+      border-top: 1px solid #E2E8F0;
+      padding: 12px 20px;
+      text-align: center;
+    }
+    .footer p {
+      font-size: 0.7rem;
+      color: #94A3B8;
+    }
+    .footer strong {
+      color: #F97316;
+    }
+
+    /* Botón imprimir */
+    .btn-print {
+      display: block;
+      width: calc(100% - 40px);
+      margin: 0 20px 20px;
+      padding: 13px;
+      background: #F97316;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+    }
+    .btn-print:hover { background: #EA6C0A; }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .card { box-shadow: none; max-width: 100%; }
+      .btn-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-logo">UNISPAN</div>
+    <div class="header-sub">Sistema de Bitácora Digital</div>
+  </div>
+
+  <!-- QR -->
+  <div class="qr-section">
+    <div class="qr-title">Escanea para instalar la app</div>
+    <div class="qr-sub">Abre la cámara de tu teléfono y apunta al código</div>
+
+    <div class="qr-wrapper">
+      <!-- QR generado via API gratuita con corrección de error alta (H) -->
+      <img
+        src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&ecc=H&color=003D7C&bgcolor=ffffff&data=https%3A%2F%2Fchuzdady.github.io%2Fbitacora-unispan"
+        alt="QR Bitácora UNISPAN"
+        onerror="this.src='https://chart.googleapis.com/chart?chs=220x220&cht=qr&chl=https://chuzdady.github.io/bitacora-unispan&choe=UTF-8'"
+      >
+    </div>
+
+    <div class="url-chip">chuzdady.github.io/bitacora-unispan</div>
+  </div>
+
+  <!-- Pasos de instalación -->
+  <div class="steps-section">
+    <div class="steps-title">Cómo instalar en Android</div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Escanea el QR o abre el enlace en <strong>Chrome</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">Espera a que cargue la app completamente</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">Toca el menú <strong>⋮</strong> (tres puntos) arriba a la derecha</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">Selecciona <strong>"Agregar a pantalla de inicio"</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-text">Toca <strong>Instalar</strong> — el ícono aparece en tu pantalla principal</div>
+    </div>
+  </div>
+
+  <!-- Botón imprimir -->
+  <button class="btn-print" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>UNISPAN México &nbsp;·&nbsp; <strong>Supervisión en Obra</strong> &nbsp;·&nbsp; Uso interno</p>
+  </div>
+
+</div>
+
+</body>
+</html>

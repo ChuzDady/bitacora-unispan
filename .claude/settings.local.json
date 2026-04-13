@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"fuelKms\\\\b\\\\|_fecha\\\\b\\\\|syncKms\\\\|v\\\\${id}_kms\" \"c:\\\\Users\\\\Unispan\\\\Dropbox\\\\Mi PC \\(INGENIERIA\\)\\\\Desktop\\\\SUPERVISIÓN\\\\PROPUESTA 2\\\\solicitud_viaticos.html\")"
+    ]
+  }
+}

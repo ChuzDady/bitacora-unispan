@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Fondo azul UNISPAN -->
+  <rect width="512" height="512" rx="80" fill="#003D7C"/>
+  <!-- Franja naranja inferior -->
+  <rect x="0" y="420" width="512" height="92" rx="0" fill="#F5821F"/>
+  <rect x="0" y="420" width="512" height="16" fill="#F5821F"/>
+  <!-- Ícono de andamio / cimbra -->
+  <!-- Columna izquierda -->
+  <rect x="100" y="120" width="36" height="240" rx="12" fill="#FFFFFF"/>
+  <!-- Columna derecha -->
+  <rect x="376" y="120" width="36" height="240" rx="12" fill="#FFFFFF"/>
+  <!-- Trabes horizontales -->
+  <rect x="100" y="120" width="312" height="36" rx="10" fill="#F5821F"/>
+  <rect x="100" y="220" width="312" height="28" rx="10" fill="rgba(255,255,255,0.6)"/>
+  <rect x="100" y="300" width="312" height="28" rx="10" fill="rgba(255,255,255,0.6)"/>
+  <!-- Base -->
+  <rect x="80" y="348" width="352" height="20" rx="10" fill="#FFFFFF"/>
+  <!-- "U" estilizada -->
+  <text x="256" y="490" font-family="Arial Black,Arial" font-weight="900"
+    font-size="52" fill="#FFFFFF" text-anchor="middle" letter-spacing="4">UNISPAN</text>
+</svg>

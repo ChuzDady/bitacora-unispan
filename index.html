@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#003D7C">
+  <meta name="description" content="Bitácora de Supervisión en Obra — UNISPAN México">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Bitácora UNISPAN">
+  <title>Bitácora UNISPAN</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- CDN Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ═══ TOAST CONTAINER ═══ -->
+  <div id="toast-container"></div>
+
+  <!-- ═══ LOADING OVERLAY ═══ -->
+  <div id="loading-overlay">
+    <div class="loading-spinner"></div>
+    <span class="loading-msg">Cargando…</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       PANTALLA 1: HOME
+       ═══════════════════════════════════════════════ -->
+  <section id="screen-home" class="screen">
+
+    <!-- Encabezado azul corporativo -->
+    <div class="home-header">
+      <div class="home-header-inner">
+        <img src="assets/logo.svg" alt="UNISPAN" class="home-logo"
+             onerror="this.style.display='none'">
+        <div class="home-header-text">
+          <div class="home-title">Bitácora de Obra</div>
+          <div class="home-subtitle">UNISPAN México</div>
+        </div>
+        <div id="offline-badge" class="hidden">SIN CONEXIÓN</div>
+      </div>
+    </div>
+
+    <!-- KPI cards (contenido inyectado por JS en .stats-row > .stat) -->
+    <div class="home-kpi-wrapper">
+      <div id="home-stats"><!-- inyectado por JS --></div>
+    </div>
+
+    <!-- Acciones rápidas -->
+    <div class="home-actions">
+      <button class="btn btn-primary"
+        onclick="State.reset(); AppRouter.irA('bitacora-form')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="11" x2="12" y2="17"/>
+          <line x1="9" y1="14" x2="15" y2="14"/>
+        </svg>
+        Nueva Bitácora
+      </button>
+      <button class="btn btn-outline-danger"
+        onclick="State.reset(); AppRouter.irA('nc-form')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Nueva NC
+      </button>
+    </div>
+
+    <!-- Lista de registros -->
+    <div class="lista-header">
+      <span class="section-label">Registros recientes</span>
+    </div>
+    <div id="lista-registros"><!-- inyectado por JS --></div>
+
+    <!-- Botón instalar PWA -->
+    <button id="btn-instalar" class="btn btn-azul hidden" onclick="instalarPWA()"
+      style="position:fixed;bottom:calc(var(--nav-h)+12px);left:16px;z-index:150;box-shadow:var(--shadow-md)">
+      📲 Instalar App
+    </button>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       PANTALLA 2: FORMULARIO BITÁCORA
+       ═══════════════════════════════════════════════ -->
+  <section id="screen-bitacora-form" class="screen">
+    <div class="app-header">
+      <button class="header-back" onclick="AppRouter.irA('home')">‹</button>
+      <span class="header-title" id="bitacora-titulo">Nueva Bitácora</span>
+    </div>
+
+    <form id="form-bitacora" class="form-container" onsubmit="return false">
+
+      <!-- Banner firmado y bloqueado -->
+      <div id="b-firmado-banner" class="firmado-banner hidden">
+        <span class="firmado-banner-icon">🔒</span>
+        <div class="firmado-banner-text">
+          <strong>Acta Firmada — Registro Bloqueado</strong>
+          <small>Este documento ha sido firmado y no puede modificarse ni eliminarse.</small>
+        </div>
+      </div>
+
+      <!-- Datos generales -->
+      <div class="form-section">
+        <div class="form-section-title">Datos Generales</div>
+
+        <div class="form-group">
+          <label for="b-obra">Nombre de la obra <span class="req">*</span></label>
+          <input type="text" id="b-obra" required placeholder="Ej: Hospital IMSS Saltillo">
+        </div>
+
+        <div class="form-group">
+          <label for="b-contrato">No. de cotización <span class="req">*</span></label>
+          <input type="text" id="b-contrato" required placeholder="Ej: UNIS-2024-041">
+        </div>
+
+        <div class="form-group">
+          <label for="b-fecha">Fecha y hora <span class="req">*</span></label>
+          <input type="datetime-local" id="b-fecha" required>
+        </div>
+
+        <!-- Ubicación GPS -->
+        <div class="form-group" id="b-gps-group">
+          <label><span style="color:#F5821F;">📍</span> Ubicación GPS</label>
+          <div id="b-gps-display" style="display:flex; align-items:center; gap:8px; padding:10px; background:rgba(0,61,124,0.05); border:1px solid rgba(0,61,124,0.15); border-radius:8px; font-size:0.85rem; color:#666;">
+            <span id="b-gps-status">Obteniendo ubicación...</span>
+            <button type="button" onclick="capturarGPSRegistro('bitacora')" style="margin-left:auto; padding:4px 12px; border:1px solid #003D7C; background:transparent; color:#003D7C; border-radius:6px; font-size:0.75rem; cursor:pointer;">
+              🔄 Actualizar
+            </button>
+          </div>
+          <input type="hidden" id="b-gps-lat" value="">
+          <input type="hidden" id="b-gps-lon" value="">
+          <div id="b-gps-link" style="display:none; margin-top:4px; font-size:0.75rem;">
+            <a id="b-gps-maps" href="#" target="_blank" style="color:#003D7C; text-decoration:none;">🗺️ Ver en Google Maps</a>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="b-supervisor">Supervisor UNISPAN <span class="req">*</span></label>
+          <input type="text" id="b-supervisor" required placeholder="Nombre completo">
+        </div>
+
+        <div class="form-group">
+          <label for="b-representante">Representante del cliente <span class="req">*</span></label>
+          <input type="text" id="b-representante" required placeholder="Nombre completo">
+        </div>
+      </div>
+
+      <!-- Actividad -->
+      <div class="form-section">
+        <div class="form-section-title">Actividad y Materiales</div>
+
+        <div class="form-group">
+          <label for="b-actividad">Actividad realizada <span class="req">*</span></label>
+          <textarea id="b-actividad" required rows="4"
+            placeholder="Describe las actividades realizadas en la visita…"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Materiales / Sistema utilizado</label>
+          <div id="b-materiales" class="checkbox-group">
+            <label class="checkbox-item">
+              <input type="checkbox" value="All Steel (AS)">
+              <label>All Steel (AS)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Puntal Travesaño (PT)">
+              <label>Puntal Travesaño (PT)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Minimag (MI)">
+              <label>Minimag (MI)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Magnum (MG)">
+              <label>Magnum (MG)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Vista (V)">
+              <label>Vista (V)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Puntal Regulable (PR)">
+              <label>Puntal Regulable (PR)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Super Uni (SU)">
+              <label>Super Uni (SU)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Hi Load (HL)">
+              <label>Hi Load (HL)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Multidireccional (MD)">
+              <label>Multidireccional (MD)</label>
+            </label>
+          </div>
+          <input type="text" id="b-material-libre" placeholder="Otro sistema (campo libre)" class="mt-8">
+        </div>
+
+        <div class="form-group">
+          <label for="b-estado-avance">Estado de avance <span class="req">*</span></label>
+          <select id="b-estado-avance" required>
+            <option value="">Selecciona…</option>
+            <option value="Inicio">Inicio</option>
+            <option value="En proceso">En proceso</option>
+            <option value="Terminado">Terminado</option>
+            <option value="Requiere atención">Requiere atención</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="b-observaciones">Observaciones / Incidencias</label>
+          <textarea id="b-observaciones" rows="3"
+            placeholder="Observaciones adicionales, incidencias detectadas…"></textarea>
+        </div>
+      </div>
+
+      <!-- Capacitación -->
+      <div class="form-section">
+        <div class="form-section-title">Capacitación al Personal</div>
+        <div class="toggle-group">
+          <label class="toggle-label" for="b-capacitacion">
+            Se realizó capacitación a personal en esta visita
+          </label>
+          <label class="switch">
+            <input type="checkbox" id="b-capacitacion" onchange="toggleCapacitacion()">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div id="cap-extra" class="hidden mt-12">
+          <div class="form-group">
+            <label for="b-desc-capacitacion">Descripción de la capacitación</label>
+            <textarea id="b-desc-capacitacion" rows="3"
+              placeholder="Describe el tema y alcance de la capacitación…"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary btn-full"
+          onclick="Pantallas.bitacora.guardar()">
+          Guardar y agregar fotos →
+        </button>
+        <button type="button" class="btn btn-ghost btn-full"
+          onclick="AppRouter.irA('home')">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       PANTALLA 3: FOTOS
+       ═══════════════════════════════════════════════ -->
+  <section id="screen-fotos" class="screen">
+    <div class="app-header">
+      <button class="header-back" onclick="Camera.cerrar(); AppRouter.irA(State.registroActual?.tipo === 'nc' ? 'nc-form' : 'bitacora-form')">‹</button>
+      <span class="header-title">Fotos de Obra</span>
+    </div>
+
+    <div class="camera-wrapper">
+      <!-- Vista previa cámara -->
+      <div id="camera-preview" class="hidden">
+        <video id="camera-video" autoplay playsinline muted></video>
+      </div>
+
+      <!-- Controles de cámara -->
+      <div class="camera-controls">
+        <button id="btn-capturar" class="btn btn-primary"
+          onclick="Pantallas.fotos.capturar()" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M20.94 11A8.994 8.994 0 1 1 11 3.06"/>
+            <path d="M22 4L11 15"/>
+          </svg>
+          Capturar
+        </button>
+        <button class="btn btn-ghost"
+          onclick="Pantallas.fotos.desdeGaleria()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          Galería
+        </button>
+      </div>
+
+      <div id="fotos-contador" class="text-center text-muted">0 / 8 fotos</div>
+
+      <!-- Grid de fotos -->
+      <div id="fotos-grid" class="fotos-grid">
+        <p class="fotos-empty">No hay fotos aún. Usa la cámara o selecciona de galería.</p>
+      </div>
+
+      <!-- Continuar -->
+      <div class="camera-continue">
+        <button class="btn btn-primary btn-full"
+          onclick="Pantallas.fotos.continuar()">
+          Continuar a firma →
+        </button>
+        <button class="btn btn-ghost btn-full"
+          onclick="Camera.cerrar(); AppRouter.irA('home')">
+          Guardar como borrador
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       PANTALLA 4: FIRMA
+       ═══════════════════════════════════════════════ -->
+  <section id="screen-firma" class="screen">
+    <div class="app-header">
+      <button class="header-back" onclick="AppRouter.irA('fotos')">‹</button>
+      <span class="header-title">Firma Digital</span>
+    </div>
+
+    <div class="firma-wrapper">
+      <div class="form-group">
+        <label for="firma-nombre">Nombre del firmante <span class="req">*</span></label>
+        <input type="text" id="firma-nombre" required
+          placeholder="Nombre completo del representante del cliente">
+      </div>
+
+      <p class="firma-instruction">Traza tu firma en el recuadro de abajo</p>
+
+      <div class="firma-container" id="firma-container">
+        <canvas id="firma-canvas"></canvas>
+      </div>
+
+      <p class="firma-legal">
+        La firma acredita haber recibido la visita de supervisión y estar de acuerdo
+        con las actividades descritas en esta bitácora — UNISPAN México.
+      </p>
+
+      <div class="firma-actions">
+        <button class="btn btn-primary btn-full"
+          onclick="Pantallas.firma.confirmar()">
+          Confirmar firma
+        </button>
+        <button class="btn btn-outline btn-full"
+          onclick="Pantallas.firma.limpiar()">
+          ↺ Borrar y volver a firmar
+        </button>
+        <button class="btn btn-ghost btn-full"
+          onclick="AppRouter.irA('home')">
+          Omitir — guardar como borrador
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       PANTALLA 5: PDF PREVIEW
+       ═══════════════════════════════════════════════ -->
+  <section id="screen-pdf-preview" class="screen">
+    <div class="app-header">
+      <button class="header-back" onclick="AppRouter.irA('home')">‹</button>
+      <span class="header-title">Vista previa</span>
+    </div>
+
+    <div class="preview-wrapper">
+      <div class="preview-card">
+        <span class="preview-tipo-badge" id="preview-tipo-label">Bitácora</span>
+        <div class="preview-folio" id="preview-folio">—</div>
+        <div class="preview-obra" id="preview-obra">—</div>
+        <div class="preview-meta">
+          <span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <span id="preview-fecha">—</span>
+          </span>
+          <span>·</span>
+          <span id="preview-estado">—</span>
+        </div>
+        <div class="preview-divider"></div>
+        <p class="text-muted" style="font-size:0.8rem;line-height:1.5">
+          Documento listo. Descarga el PDF o compártelo directamente.
+        </p>
+      </div>
+
+      <div class="preview-actions">
+        <button class="btn btn-primary"
+          onclick="Pantallas.pdfPreview.generarYDescargar()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Descargar PDF
+        </button>
+        <button class="btn btn-naranja"
+          onclick="Pantallas.pdfPreview.compartirWhatsApp()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          Compartir por WhatsApp
+        </button>
+        <button class="btn btn-outline"
+          onclick="Pantallas.pdfPreview.enviarCorreo()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+          Enviar por correo
+        </button>
+        <button class="btn btn-ghost" onclick="AppRouter.irA('home')">
+          ← Volver al inicio
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       PANTALLA 6: FORMULARIO NO CONFORMIDAD
+       ═══════════════════════════════════════════════ -->
+  <section id="screen-nc-form" class="screen">
+    <div class="app-header">
+      <button class="header-back" onclick="AppRouter.irA('nc-lista')">‹</button>
+      <span class="header-title" id="nc-form-titulo">Nueva No Conformidad</span>
+    </div>
+
+    <form id="form-nc" class="form-container" onsubmit="return false">
+
+      <!-- Datos Generales -->
+      <div class="form-section">
+        <div class="form-section-title">Datos Generales</div>
+
+        <div class="form-group">
+          <label for="nc-fecha">Fecha de detección <span class="req">*</span></label>
+          <input type="date" id="nc-fecha" required>
+        </div>
+
+        <div class="form-group">
+          <label for="nc-obra">Obra / Proyecto <span class="req">*</span></label>
+          <input type="text" id="nc-obra" required placeholder="Ej: Hospital IMSS Saltillo">
+        </div>
+
+        <div class="form-group">
+          <label for="nc-contrato">No. de cotización</label>
+          <input type="text" id="nc-contrato" placeholder="Ej: UNIS-2024-041">
+        </div>
+
+        <!-- Ubicación GPS -->
+        <div class="form-group" id="nc-gps-group">
+          <label><span style="color:#F5821F;">📍</span> Ubicación GPS</label>
+          <div id="nc-gps-display" style="display:flex; align-items:center; gap:8px; padding:10px; background:rgba(0,61,124,0.05); border:1px solid rgba(0,61,124,0.15); border-radius:8px; font-size:0.85rem; color:#666;">
+            <span id="nc-gps-status">Obteniendo ubicación...</span>
+            <button type="button" onclick="capturarGPSRegistro('nc')" style="margin-left:auto; padding:4px 12px; border:1px solid #003D7C; background:transparent; color:#003D7C; border-radius:6px; font-size:0.75rem; cursor:pointer;">
+              🔄 Actualizar
+            </button>
+          </div>
+          <input type="hidden" id="nc-gps-lat" value="">
+          <input type="hidden" id="nc-gps-lon" value="">
+          <div id="nc-gps-link" style="display:none; margin-top:4px; font-size:0.75rem;">
+            <a id="nc-gps-maps" href="#" target="_blank" style="color:#003D7C; text-decoration:none;">🗺️ Ver en Google Maps</a>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="nc-supervisor">Supervisor que detecta <span class="req">*</span></label>
+          <input type="text" id="nc-supervisor" required placeholder="Nombre completo">
+        </div>
+      </div>
+
+      <!-- Clasificación -->
+      <div class="form-section">
+        <div class="form-section-title">Clasificación NC</div>
+
+        <div class="form-group">
+          <label for="nc-tipo">Tipo de No Conformidad <span class="req">*</span></label>
+          <select id="nc-tipo" required>
+            <option value="">Selecciona…</option>
+            <option value="Calidad de Producto">🔴 Calidad de Producto</option>
+            <option value="Diseño de Ingeniería">🟡 Diseño de Ingeniería</option>
+            <option value="Logística">🔵 Logística</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="nc-reclamante">Proceso reclamante (quién emite la NC) <span class="req">*</span></label>
+          <input type="text" id="nc-reclamante" required placeholder="Ej: Supervisión en Obra">
+        </div>
+
+        <div class="form-group">
+          <label for="nc-receptor">Proceso receptor (a quién se dirige) <span class="req">*</span></label>
+          <input type="text" id="nc-receptor" required placeholder="Ej: Coordinador de Calidad">
+        </div>
+
+        <div class="form-group">
+          <label for="nc-administrador">Administrador de proyecto responsable</label>
+          <input type="text" id="nc-administrador" placeholder="Nombre completo">
+        </div>
+      </div>
+
+      <!-- Descripción -->
+      <div class="form-section">
+        <div class="form-section-title">Descripción</div>
+
+        <div class="form-group">
+          <label for="nc-descripcion">Descripción detallada <span class="req">*</span></label>
+          <textarea id="nc-descripcion" required rows="4"
+            placeholder="Describe la no conformidad detectada con todos los detalles relevantes…"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Sistema / Equipo involucrado</label>
+          <div id="nc-sistema" class="checkbox-group">
+            <label class="checkbox-item">
+              <input type="checkbox" value="All Steel (AS)">
+              <label>All Steel (AS)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Puntal Travesaño (PT)">
+              <label>Puntal Travesaño (PT)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Minimag (MI)">
+              <label>Minimag (MI)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Magnum (MG)">
+              <label>Magnum (MG)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Vista (V)">
+              <label>Vista (V)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Puntal Regulable (PR)">
+              <label>Puntal Regulable (PR)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Super Uni (SU)">
+              <label>Super Uni (SU)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Hi Load (HL)">
+              <label>Hi Load (HL)</label>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="Multidireccional (MD)">
+              <label>Multidireccional (MD)</label>
+            </label>
+          </div>
+          <input type="text" id="nc-sistema-libre" placeholder="Otro sistema" class="mt-8">
+        </div>
+
+        <div class="form-group">
+          <label for="nc-cantidad">Cantidad de piezas afectadas</label>
+          <input type="number" id="nc-cantidad" min="0" placeholder="0">
+        </div>
+
+        <div class="form-group">
+          <label for="nc-impacto">Impacto <span class="req">*</span></label>
+          <select id="nc-impacto" required>
+            <option value="">Selecciona…</option>
+            <option value="BAJO">BAJO</option>
+            <option value="ALTO">ALTO</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Análisis y Acciones -->
+      <div class="form-section">
+        <div class="form-section-title">Análisis y Acciones</div>
+
+        <div class="form-group">
+          <label for="nc-causa">Causa raíz</label>
+          <textarea id="nc-causa" rows="3"
+            placeholder="¿Por qué ocurrió esta no conformidad?"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="nc-acciones">Acciones correctivas a tomar <span class="req">*</span></label>
+          <textarea id="nc-acciones" required rows="3"
+            placeholder="Describe las acciones para corregir y prevenir recurrencia…"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="nc-fecha-impl">Fecha estimada de implementación</label>
+          <input type="date" id="nc-fecha-impl">
+        </div>
+
+        <div class="form-group">
+          <label for="nc-responsable">Responsable <span class="req">*</span></label>
+          <select id="nc-responsable" required>
+            <option value="">Selecciona…</option>
+            <option value="UNISPAN">UNISPAN</option>
+            <option value="Contratista">Contratista</option>
+            <option value="Cliente">Cliente</option>
+            <option value="Compartida">Compartida</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="nc-continuo">¿Se pudo continuar la obra? <span class="req">*</span></label>
+          <select id="nc-continuo" required>
+            <option value="">Selecciona…</option>
+            <option value="Sí">Sí</option>
+            <option value="No">No</option>
+            <option value="Parcialmente">Parcialmente</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Escalación -->
+      <div class="form-section">
+        <div class="form-section-title">Escalación y Notificación</div>
+
+        <div class="form-group">
+          <label for="nc-contacto">Contacto notificado</label>
+          <input type="text" id="nc-contacto" placeholder="Nombre del contacto notificado">
+        </div>
+
+        <div class="form-group">
+          <label for="nc-medio">Medio de notificación</label>
+          <select id="nc-medio">
+            <option value="">Selecciona…</option>
+            <option value="WhatsApp">WhatsApp</option>
+            <option value="Correo">Correo</option>
+            <option value="Llamada">Llamada</option>
+            <option value="Presencial">Presencial</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="nc-fecha-notif">Fecha y hora de notificación</label>
+          <input type="datetime-local" id="nc-fecha-notif">
+        </div>
+
+        <div class="form-group">
+          <label for="nc-obs-sgc">Observaciones SGC</label>
+          <textarea id="nc-obs-sgc" rows="2"
+            placeholder="Observaciones del Sistema de Gestión de Calidad…"></textarea>
+        </div>
+      </div>
+
+      <!-- Resolución (solo si estado = Resuelta o Cerrada) -->
+      <div class="form-section hidden" id="nc-resolucion-section">
+        <div class="form-section-title">Resolución</div>
+
+        <div class="form-group">
+          <label for="nc-resolucion">Descripción de la resolución</label>
+          <textarea id="nc-resolucion" rows="3"
+            placeholder="¿Cómo se resolvió la no conformidad?"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="nc-eficacia">Eficacia</label>
+          <select id="nc-eficacia">
+            <option value="">Selecciona…</option>
+            <option value="Eficaz">Eficaz</option>
+            <option value="No eficaz">No eficaz</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="nc-fecha-cierre">Fecha de cierre</label>
+          <input type="date" id="nc-fecha-cierre">
+        </div>
+      </div>
+
+      <!-- Estado -->
+      <div class="form-section">
+        <div class="form-section-title">Estado Actual</div>
+        <div class="form-group">
+          <label for="nc-estado">Estado actual</label>
+          <select id="nc-estado" onchange="toggleNCEstado()">
+            <option value="Abierta">Abierta</option>
+            <option value="En atención">En atención</option>
+            <option value="Resuelta">Resuelta</option>
+            <option value="Cerrada">Cerrada</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary btn-full"
+          onclick="Pantallas.nc.guardarForm()">
+          Guardar y agregar fotos →
+        </button>
+        <button type="button" class="btn btn-ghost btn-full"
+          onclick="AppRouter.irA('nc-lista')">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       PANTALLA 7: LISTA DE NO CONFORMIDADES
+       ═══════════════════════════════════════════════ -->
+  <section id="screen-nc-lista" class="screen">
+    <div class="app-header">
+      <span class="header-title">No Conformidades</span>
+      <div class="header-actions">
+        <button class="btn btn-sm btn-nc"
+          onclick="State.reset(); AppRouter.irA('nc-form')">
+          + Nueva NC
+        </button>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filtros-bar">
+      <select id="nc-filtro-estado" onchange="aplicarFiltrosNC()">
+        <option value="">Todos los estados</option>
+        <option value="Abierta">Abierta</option>
+        <option value="En atención">En atención</option>
+        <option value="Resuelta">Resuelta</option>
+        <option value="Cerrada">Cerrada</option>
+      </select>
+      <select id="nc-filtro-tipo" onchange="aplicarFiltrosNC()">
+        <option value="">Todos los tipos</option>
+        <option value="Calidad de Producto">Calidad</option>
+        <option value="Diseño de Ingeniería">Ingeniería</option>
+        <option value="Logística">Logística</option>
+      </select>
+      <input type="text" id="nc-filtro-texto"
+        placeholder="Buscar…"
+        oninput="aplicarFiltrosNC()">
+    </div>
+
+    <div id="nc-lista-container"><!-- inyectado por JS --></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       PANTALLA 8: CONFIGURACIÓN
+       ═══════════════════════════════════════════════ -->
+  <section id="screen-config" class="screen">
+    <div class="app-header">
+      <span class="header-title">Configuración</span>
+    </div>
+
+    <div class="config-wrapper">
+
+      <!-- Perfil supervisor -->
+      <div class="config-section">
+        <div class="config-section-title">Supervisor</div>
+        <div class="config-body">
+          <div class="form-group">
+            <label for="config-supervisor">Tu nombre (persiste entre sesiones)</label>
+            <input type="text" id="config-supervisor" placeholder="Nombre completo del supervisor">
+          </div>
+          <button class="btn btn-primary" onclick="Pantallas.config.guardarSupervisor()">
+            Guardar nombre
+          </button>
+        </div>
+      </div>
+
+      <!-- Estadísticas -->
+      <div class="config-section">
+        <div class="config-section-title">Base de Datos</div>
+        <div class="config-body">
+          <div id="config-stats"><!-- inyectado por JS --></div>
+        </div>
+      </div>
+
+      <!-- Reporte mensual -->
+      <div class="config-section">
+        <div class="config-section-title">Reporte Mensual</div>
+        <div class="config-body">
+          <div class="mes-anio-row">
+            <div class="form-group" style="margin:0">
+              <label for="export-mes">Mes</label>
+              <select id="export-mes">
+                <option value="1">Enero</option>
+                <option value="2">Febrero</option>
+                <option value="3">Marzo</option>
+                <option value="4" selected>Abril</option>
+                <option value="5">Mayo</option>
+                <option value="6">Junio</option>
+                <option value="7">Julio</option>
+                <option value="8">Agosto</option>
+                <option value="9">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label for="export-anio">Año</label>
+              <input type="number" id="export-anio" value="2026" min="2024" max="2030">
+            </div>
+          </div>
+
+          <div class="export-help">
+            Entrega el archivo JSON a Claude con el mensaje:<br>
+            <strong>"Genera el reporte mensual de supervisión con este JSON"</strong>
+          </div>
+
+          <div class="export-actions">
+            <button class="btn btn-primary btn-full"
+              onclick="Pantallas.config.exportarJSON()">
+              Exportar JSON para reporte mensual
+            </button>
+            <button class="btn btn-outline btn-full"
+              onclick="Pantallas.config.exportarZIP()">
+              Exportar ZIP de PDFs del mes
+            </button>
+            <button class="btn btn-ghost btn-full"
+              onclick="Pantallas.config.exportarTodo()">
+              Exportar todos los datos (JSON)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- App info -->
+      <div class="config-section">
+        <div class="config-section-title">Información</div>
+        <div class="config-body">
+          <p class="version-text">UNISPAN Bitácora PWA v1.0</p>
+          <p class="version-text">Caché: <span id="config-sw-version">—</span></p>
+          <div class="divider"></div>
+          <button class="btn btn-outline-danger btn-sm"
+            onclick="Pantallas.config.limpiarDatos()">
+            Eliminar todos los datos
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       BOTTOM NAVIGATION
+       ═══════════════════════════════════════════════ -->
+  <nav id="bottom-nav">
+    <button class="nav-item active" data-screen="home">
+      <span class="nav-icon">🏠</span>
+      <span>Inicio</span>
+    </button>
+    <button class="nav-item" data-screen="bitacora-form"
+      onclick="State.reset()">
+      <span class="nav-icon">📋</span>
+      <span>Bitácora</span>
+    </button>
+    <button class="nav-item" data-screen="nc-form"
+      onclick="State.reset()">
+      <span class="nav-icon">⚠</span>
+      <span>No Conf.</span>
+    </button>
+    <button class="nav-item" data-screen="nc-lista">
+      <span class="nav-icon">📂</span>
+      <span>Historial</span>
+    </button>
+    <button class="nav-item" data-screen="config">
+      <span class="nav-icon">⚙</span>
+      <span>Config.</span>
+    </button>
+  </nav>
+
+  <!-- ═══ MODAL: DETALLE NC ═══ -->
+  <div class="modal-overlay" id="modal-nc-detalle"
+    onclick="if(event.target===this) cerrarModal('modal-nc-detalle')">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-nc-titulo">Detalle NC</span>
+        <button class="modal-close" onclick="cerrarModal('modal-nc-detalle')">✕</button>
+      </div>
+      <div class="modal-body" id="modal-nc-body"><!-- inyectado por JS --></div>
+    </div>
+  </div>
+
+  <!-- ═══ MODAL: CAMBIO DE ESTADO NC ═══ -->
+  <div class="modal-overlay" id="modal-cambio-estado"
+    onclick="if(event.target===this) cerrarModal('modal-cambio-estado')">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <span class="modal-title">Cambiar Estado</span>
+        <button class="modal-close" onclick="cerrarModal('modal-cambio-estado')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="cambio-estado-select">Nuevo estado</label>
+          <select id="cambio-estado-select"><!-- inyectado por JS --></select>
+        </div>
+        <div class="form-group">
+          <label for="cambio-estado-notas">Notas del cambio (opcional)</label>
+          <textarea id="cambio-estado-notas" rows="3"
+            placeholder="Describe el motivo del cambio de estado…"></textarea>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-primary" style="flex:1"
+            onclick="NCModule.confirmarCambioEstado()">
+            Confirmar cambio
+          </button>
+          <button class="btn btn-ghost"
+            onclick="cerrarModal('modal-cambio-estado')">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- Scripts de la aplicación (orden: db → camera → signature → pdf → nc → export → app) -->
+<script src="js/db.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/signature.js"></script>
+<script src="js/pdf.js"></script>
+<script src="js/nc.js"></script>
+<script src="js/export.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

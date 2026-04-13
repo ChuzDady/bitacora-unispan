@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60">
+  <!-- Background -->
+  <rect width="240" height="60" rx="4" fill="#003D7C"/>
+  <!-- Orange accent bar -->
+  <rect x="0" y="48" width="240" height="6" rx="0" fill="#F5821F"/>
+  <!-- U shape scaffold icon -->
+  <rect x="10" y="12" width="5" height="30" rx="2" fill="#F5821F"/>
+  <rect x="30" y="12" width="5" height="30" rx="2" fill="#F5821F"/>
+  <rect x="10" y="36" width="25" height="5" rx="2" fill="#F5821F"/>
+  <rect x="10" y="18" width="25" height="4" rx="1" fill="#FFFFFF" opacity="0.6"/>
+  <rect x="10" y="26" width="25" height="4" rx="1" fill="#FFFFFF" opacity="0.6"/>
+  <!-- UNISPAN text -->
+  <text x="48" y="37" font-family="Arial Black, Arial" font-weight="900" font-size="22" fill="#FFFFFF" letter-spacing="2">UNISPAN</text>
+  <!-- tagline -->
+  <text x="48" y="47" font-family="Arial, sans-serif" font-size="8" fill="#F5821F" letter-spacing="1">INGENIERÍA EN ENCOFRADOS Y ANDAMIOS</text>
+</svg>
