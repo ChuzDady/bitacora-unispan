@@ -336,24 +336,74 @@ const Pantallas = {
         return;
       }
 
-      const nombre = document.getElementById('firma-nombre').value.trim();
+      const nombre  = document.getElementById('firma-nombre').value.trim();
+      const cargo   = document.getElementById('firma-cargo').value;
+      const empresa = document.getElementById('firma-empresa').value.trim();
+
       if (!nombre) {
         Toast.show('Ingresa el nombre del firmante', 'warning');
         document.getElementById('firma-nombre').focus();
         return;
+      }
+      if (!cargo) {
+        Toast.show('Selecciona el cargo del firmante', 'warning');
+        document.getElementById('firma-cargo').focus();
+        return;
+      }
+      if (!empresa) {
+        Toast.show('Ingresa la empresa del cliente', 'warning');
+        document.getElementById('firma-empresa').focus();
+        return;
+      }
+
+      // Captura GPS silenciosa — máximo 5 segundos, nunca bloquea
+      const gps = await new Promise((resolve) => {
+        if (!navigator.geolocation) { resolve(null); return; }
+        const timer = setTimeout(() => resolve(null), 5000);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => { clearTimeout(timer); resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }); },
+          ()    => { clearTimeout(timer); resolve(null); },
+          { timeout: 5000, maximumAge: 30000, enableHighAccuracy: false }
+        );
+      });
+
+      // Hash SHA-256 del registro en este momento exacto, antes de agregar la firma
+      let documentoHash = null;
+      try {
+        const tipo = State.registroActual.tipo;
+        const registroSnap = tipo === 'bitacora'
+          ? await BitacoraDB.getById(State.registroActual.id)
+          : await NCDB.getById(State.registroActual.id);
+        const jsonBytes = new TextEncoder().encode(JSON.stringify(registroSnap));
+        const hashBuffer = await crypto.subtle.digest('SHA-256', jsonBytes);
+        documentoHash = Array.from(new Uint8Array(hashBuffer))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+      } catch(e) {
+        console.warn('Hash SHA-256 no disponible:', e);
       }
 
       Loading.show('Guardando firma…');
       try {
         const pngDataURL = SignaturePad.exportarPNG();
 
+        const notasCliente = document.getElementById('firma-toggle-notas')?.checked
+          ? (document.getElementById('firma-notas-cliente')?.value.trim() || '')
+          : '';
+
         const firmaData = {
-          registro_id:    State.registroActual.id,
-          tipo_registro:  State.registroActual.tipo,
-          tipo_firma:     'principal',
-          imagen_png:     pngDataURL,
-          nombre_firmante: nombre,
-          timestamp:      new Date().toISOString()
+          registro_id:         State.registroActual.id,
+          tipo_registro:       State.registroActual.tipo,
+          tipo_firma:          'principal',
+          imagen_png:          pngDataURL,
+          nombre_firmante:     nombre,
+          cargo_firmante:      cargo,
+          empresa_firmante:    empresa,
+          firma_gps_lat:       gps?.lat ?? null,
+          firma_gps_lon:       gps?.lon ?? null,
+          documento_hash:      documentoHash,
+          firma_notas_cliente: notasCliente,
+          timestamp:           new Date().toISOString()
         };
 
         // Eliminar firma anterior si existe
@@ -647,9 +697,7 @@ function leerFormBitacora() {
     capacitacion:      document.getElementById('b-capacitacion').checked,
     descripcion_capacitacion: document.getElementById('b-capacitacion').checked
       ? document.getElementById('b-desc-capacitacion').value.trim()
-      : null,
-    gps_lat:           parseFloat(document.getElementById('b-gps-lat')?.value) || null,
-    gps_lon:           parseFloat(document.getElementById('b-gps-lon')?.value) || null
+      : null
   };
 }
 
@@ -675,11 +723,6 @@ function rellenarFormBitacora(b) {
     if (cb) cb.checked = true;
     else setVal('b-material-libre', m);
   });
-
-  // GPS
-  if (b.gps_lat && b.gps_lon) {
-    mostrarGPSEnForm('bitacora', b.gps_lat, b.gps_lon);
-  }
 }
 
 function limpiarFormBitacora() {
@@ -740,9 +783,7 @@ function leerFormNC() {
     estado:               document.getElementById('nc-estado')?.value || 'Abierta',
     descripcion_resolucion: document.getElementById('nc-resolucion')?.value.trim(),
     eficacia:             document.getElementById('nc-eficacia')?.value,
-    fecha_cierre:         document.getElementById('nc-fecha-cierre')?.value,
-    gps_lat:              parseFloat(document.getElementById('nc-gps-lat')?.value) || null,
-    gps_lon:              parseFloat(document.getElementById('nc-gps-lon')?.value) || null
+    fecha_cierre:         document.getElementById('nc-fecha-cierre')?.value
   };
 }
 
@@ -780,11 +821,6 @@ function rellenarFormNC(nc) {
     setVal('nc-resolucion', nc.descripcion_resolucion);
     setVal('nc-eficacia', nc.eficacia);
     setVal('nc-fecha-cierre', nc.fecha_cierre);
-  }
-
-  // GPS
-  if (nc.gps_lat && nc.gps_lon) {
-    mostrarGPSEnForm('nc', nc.gps_lat, nc.gps_lon);
   }
 }
 
@@ -992,6 +1028,24 @@ function toggleCapacitacion() {
   if (extra) extra.classList.toggle('hidden', !cb.checked);
 }
 
+/* ── NOTA CLIENTE TOGGLE ─────────────────────────── */
+function toggleNotasCliente() {
+  const cb      = document.getElementById('firma-toggle-notas');
+  const wrapper = document.getElementById('firma-notas-wrapper');
+  if (!wrapper) return;
+  wrapper.classList.toggle('hidden', !cb.checked);
+  if (!cb.checked) {
+    const ta = document.getElementById('firma-notas-cliente');
+    if (ta) { ta.value = ''; actualizarContadorNotas(); }
+  }
+}
+
+function actualizarContadorNotas() {
+  const ta  = document.getElementById('firma-notas-cliente');
+  const cnt = document.getElementById('notas-contador');
+  if (ta && cnt) cnt.textContent = ta.value.length;
+}
+
 /* ── NC ESTADO TOGGLE para resolución ─────────────── */
 function toggleNCEstado() {
   const estado = document.getElementById('nc-estado')?.value;
@@ -1063,69 +1117,3 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('offline', updateOnlineStatus);
   updateOnlineStatus();
 });
-
-/* ── GPS PARA REGISTROS ──────────────────────────── */
-
-// Captura GPS y lo muestra en el formulario
-function capturarGPSRegistro(tipo) {
-  const prefix = tipo === 'bitacora' ? 'b' : 'nc';
-  const statusEl = document.getElementById(`${prefix}-gps-status`);
-  if (statusEl) statusEl.textContent = '⏳ Obteniendo ubicación...';
-
-  if (!navigator.geolocation) {
-    if (statusEl) statusEl.textContent = '❌ GPS no disponible en este dispositivo';
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      mostrarGPSEnForm(tipo, lat, lon);
-    },
-    (err) => {
-      console.warn('GPS error:', err);
-      if (statusEl) statusEl.textContent = '❌ No se pudo obtener ubicación. Verifica permisos.';
-    },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-  );
-}
-
-// Muestra coordenadas en el formulario y actualiza hidden inputs
-function mostrarGPSEnForm(tipo, lat, lon) {
-  const prefix = tipo === 'bitacora' ? 'b' : 'nc';
-  const statusEl = document.getElementById(`${prefix}-gps-status`);
-  const latInput = document.getElementById(`${prefix}-gps-lat`);
-  const lonInput = document.getElementById(`${prefix}-gps-lon`);
-  const linkDiv  = document.getElementById(`${prefix}-gps-link`);
-  const mapsLink = document.getElementById(`${prefix}-gps-maps`);
-
-  if (latInput) latInput.value = lat;
-  if (lonInput) lonInput.value = lon;
-
-  if (statusEl) {
-    statusEl.innerHTML = `✅ <strong>${lat.toFixed(6)}, ${lon.toFixed(6)}</strong>`;
-  }
-
-  if (linkDiv && mapsLink) {
-    linkDiv.style.display = 'block';
-    mapsLink.href = `https://www.google.com/maps?q=${lat},${lon}`;
-  }
-}
-
-// Auto-capturar GPS al abrir formulario de bitácora o NC
-const _originalIrA = AppRouter.irA.bind(AppRouter);
-AppRouter.irA = function(screen) {
-  _originalIrA(screen);
-  // Si entramos al form de bitácora nueva o NC nueva, capturar GPS
-  setTimeout(() => {
-    if (screen === 'bitacora-form' && !State.modoEdicion) {
-      const latVal = document.getElementById('b-gps-lat')?.value;
-      if (!latVal) capturarGPSRegistro('bitacora');
-    }
-    if (screen === 'nc-form' && !State.modoEdicion) {
-      const latVal = document.getElementById('nc-gps-lat')?.value;
-      if (!latVal) capturarGPSRegistro('nc');
-    }
-  }, 300);
-};

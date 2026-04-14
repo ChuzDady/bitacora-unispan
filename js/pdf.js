@@ -180,7 +180,7 @@ const PDFGen = (() => {
   /* ═══════════════════════════════════════════════════
      PIE DE PÁGINA (todas las páginas)
      ═══════════════════════════════════════════════════ */
-  function dibujarFooter(doc, pageNum, totalPages, centroTexto = '') {
+  function dibujarFooter(doc, pageNum, totalPages, centroTexto = '', hashDoc = null) {
     const pieY = PH - FTR;
 
     /* Línea naranja superior */
@@ -203,6 +203,15 @@ const PDFGen = (() => {
     /* Derecha */
     doc.setFont('helvetica', 'bold');
     doc.text(`Página ${pageNum} de ${totalPages}`, PW - M, pieY + 4.5, { align: 'right' });
+
+    /* Hash de integridad — solo en la última página */
+    if (hashDoc && pageNum === totalPages) {
+      const hashCorto = hashDoc.substring(0, 32);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.5);
+      doc.setTextColor(...C.gris);
+      doc.text(`Integridad del documento: ${hashCorto}…`, PW / 2, pieY + 8.5, { align: 'center' });
+    }
   }
 
   /* ═══════════════════════════════════════════════════
@@ -410,12 +419,55 @@ const PDFGen = (() => {
   }
 
   /* ═══════════════════════════════════════════════════
+     NOTAS DEL CLIENTE
+     ═══════════════════════════════════════════════════ */
+  function notasClienteBloque(doc, texto, y) {
+    if (!texto || !texto.trim()) return y;  // no renderiza si vacío
+
+    const label    = 'NOTAS DEL CLIENTE (agregadas al momento de firmar):';
+    const lines    = doc.splitTextToSize(texto.trim(), CW - 10);
+    const lineH    = 4.5;
+    const padV     = 5;
+    const labelH   = 6;
+    const boxH     = labelH + padV + lines.length * lineH + padV;
+
+    y = checkPage(doc, y, boxH + 4);
+
+    /* Fondo amarillo claro */
+    doc.setFillColor(255, 249, 230);       // #FFF9E6
+    doc.rect(M, y, CW, boxH, 'F');
+
+    /* Borde izquierdo naranja 3px */
+    doc.setFillColor(245, 130, 31);        // #F5821F
+    doc.rect(M, y, 3, boxH, 'F');
+
+    /* Borde exterior sutil */
+    doc.setDrawColor(245, 130, 31);
+    doc.setLineWidth(0.4);
+    doc.rect(M, y, CW, boxH, 'S');
+
+    /* Label */
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(180, 80, 0);          // naranja oscuro
+    doc.text(label, M + 6, y + labelH);
+
+    /* Texto del cliente */
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(50, 50, 50);
+    doc.text(lines, M + 6, y + labelH + padV);
+
+    return y + boxH + 5;
+  }
+
+  /* ═══════════════════════════════════════════════════
      SECCIÓN DE FIRMA
      ═══════════════════════════════════════════════════ */
   function dibujarFirma(doc, firma, tituloSeccion, textoLegal, y) {
-    y = checkPage(doc, y, 65);
+    y = checkPage(doc, y, 80);
 
-    const boxH = 52;
+    const boxH = 70;
 
     /* Recuadro con borde punteado azul */
     doc.setDrawColor(...C.azul);
@@ -440,8 +492,8 @@ const PDFGen = (() => {
     }
 
     /* Imagen de firma */
-    const sigY     = y + 18;
-    const sigH     = 24;
+    const sigY     = y + 17;
+    const sigH     = 22;
     const sigAreaX = M + 20;
     const sigAreaW = CW - 40;
 
@@ -455,21 +507,43 @@ const PDFGen = (() => {
     doc.setDrawColor(...C.gris);
     doc.setLineWidth(0.5);
     doc.setLineDash([], 0);
-    doc.line(sigAreaX, y + boxH - 14, sigAreaX + sigAreaW, y + boxH - 14);
+    doc.line(sigAreaX, y + 44, sigAreaX + sigAreaW, y + 44);
 
     /* Nombre del firmante */
     const nombre = firma?.nombre_firmante || '________________________________';
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(...C.negro);
-    doc.text(nombre, PW / 2, y + boxH - 8.5, { align: 'center' });
+    doc.text(nombre, PW / 2, y + 50, { align: 'center' });
+
+    /* Cargo y empresa */
+    const cargo   = firma?.cargo_firmante   || '';
+    const empresa = firma?.empresa_firmante || '';
+    if (cargo || empresa) {
+      const linea = [cargo, empresa].filter(Boolean).join('  ·  ');
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8);
+      doc.setTextColor(...C.azul);
+      doc.text(linea, PW / 2, y + 56, { align: 'center' });
+    }
+
+    /* GPS de firma */
+    const lat = firma?.firma_gps_lat;
+    const lon = firma?.firma_gps_lon;
+    if (lat != null && lon != null) {
+      const coordText = `📍 GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(...C.gris);
+      doc.text(coordText, PW / 2, y + 62, { align: 'center' });
+    }
 
     /* Timestamp */
     if (firma?.timestamp) {
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
+      doc.setFontSize(7);
       doc.setTextColor(...C.gris);
-      doc.text(new Date(firma.timestamp).toLocaleString('es-MX'), PW / 2, y + boxH - 4, { align: 'center' });
+      doc.text(new Date(firma.timestamp).toLocaleString('es-MX'), PW / 2, y + 67, { align: 'center' });
     }
 
     return y + boxH + 6;
@@ -478,7 +552,7 @@ const PDFGen = (() => {
   /* ═══════════════════════════════════════════════════
      DECORACIONES FINALES (headers + footers en todas las páginas)
      ═══════════════════════════════════════════════════ */
-  function aplicarDecoraciones(doc, tienePortada, tituloDoc, folio, piecentro) {
+  function aplicarDecoraciones(doc, tienePortada, tituloDoc, folio, piecentro, hashDoc = null) {
     const total = doc.getNumberOfPages();
     for (let p = 1; p <= total; p++) {
       doc.setPage(p);
@@ -487,7 +561,7 @@ const PDFGen = (() => {
       if (!esPortada) {
         dibujarHeader(doc, tituloDoc, folio);
       }
-      dibujarFooter(doc, p, total, piecentro);
+      dibujarFooter(doc, p, total, piecentro, hashDoc);
     }
   }
 
@@ -527,15 +601,11 @@ const PDFGen = (() => {
 
     /* ── SECCIÓN 1: Datos Generales ── */
     y = seccion(doc, '1', 'Datos Generales', y);
-    const gpsStr = bitacora.gps_lat && bitacora.gps_lon
-      ? `${bitacora.gps_lat.toFixed(6)}, ${bitacora.gps_lon.toFixed(6)}`
-      : 'No disponible';
     y = tablaFilas(doc, [
       ['Folio',             folio],
       ['Fecha y Hora',      bitacora.fecha ? new Date(bitacora.fecha).toLocaleString('es-MX') : '—'],
       ['Obra / Proyecto',   bitacora.obra],
       ['No. de Cotización', bitacora.contrato],
-      ['Ubicación GPS',     gpsStr],
       ['Supervisor UNISPAN',bitacora.supervisor],
       ['Rep. del Cliente',  bitacora.representante],
       ['Estado de Avance',  bitacora.estado_avance],
@@ -567,9 +637,10 @@ const PDFGen = (() => {
     const legal = 'El presente documento es constancia de la visita de supervisión realizada por UNISPAN México. La firma del representante del cliente acredita haber recibido el servicio descrito y estar conforme con las actividades registradas en esta bitácora.';
 
     y = dibujarFirma(doc, firma, 'Firma del Representante del Cliente', legal, y);
+    y = notasClienteBloque(doc, firma?.firma_notas_cliente, y);
 
     /* ── Aplicar headers y footers ── */
-    aplicarDecoraciones(doc, false, tituloDoc, folio, '');
+    aplicarDecoraciones(doc, false, tituloDoc, folio, '', firma?.documento_hash || null);
 
     return doc;
   }
@@ -631,15 +702,11 @@ const PDFGen = (() => {
 
     /* ── SECCIÓN 1: Datos Generales ── */
     y = seccion(doc, '1', 'Datos Generales', y);
-    const gpsStrNC = nc.gps_lat && nc.gps_lon
-      ? `${nc.gps_lat.toFixed(6)}, ${nc.gps_lon.toFixed(6)}`
-      : 'No disponible';
     y = tablaFilas(doc, [
       ['Folio',            folio],
       ['Fecha Detección',  nc.fecha_deteccion ? new Date(nc.fecha_deteccion).toLocaleDateString('es-MX') : '—'],
       ['Obra / Proyecto',  nc.obra],
       ['No. Cotización',   nc.contrato],
-      ['Ubicación GPS',    gpsStrNC],
       ['Supervisor',       nc.supervisor],
       ['Clasificación',    nc.tipo],
       ['Reclamante',       nc.proceso_reclamante],
@@ -686,6 +753,7 @@ const PDFGen = (() => {
     y = seccion(doc, '6', 'Constancia de Notificación al Cliente', y);
     const legalNC = 'El presente documento es constancia de notificación formal de no conformidad. La firma acredita conocimiento del evento, no necesariamente responsabilidad sobre el mismo — UNISPAN México / FOR-P.CA-014.';
     y = dibujarFirma(doc, firmaPrincipal, 'Firma del Representante del Cliente', legalNC, y);
+    y = notasClienteBloque(doc, firmaPrincipal?.firma_notas_cliente, y);
 
     /* ── SECCIÓN 7: Resolución (si aplica) ── */
     if (nc.estado === 'Resuelta' || nc.estado === 'Cerrada') {
@@ -726,7 +794,7 @@ const PDFGen = (() => {
     }
 
     /* ── Decoraciones ── */
-    aplicarDecoraciones(doc, true, tituloDoc, folio, 'FOR-P.CA-014  |  Rev. 01');
+    aplicarDecoraciones(doc, true, tituloDoc, folio, 'FOR-P.CA-014  |  Rev. 01', firmaPrincipal?.documento_hash || null);
 
     return doc;
   }

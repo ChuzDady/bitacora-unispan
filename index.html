@@ -138,22 +138,6 @@
           <input type="datetime-local" id="b-fecha" required>
         </div>
 
-        <!-- Ubicación GPS -->
-        <div class="form-group" id="b-gps-group">
-          <label><span style="color:#F5821F;">📍</span> Ubicación GPS</label>
-          <div id="b-gps-display" style="display:flex; align-items:center; gap:8px; padding:10px; background:rgba(0,61,124,0.05); border:1px solid rgba(0,61,124,0.15); border-radius:8px; font-size:0.85rem; color:#666;">
-            <span id="b-gps-status">Obteniendo ubicación...</span>
-            <button type="button" onclick="capturarGPSRegistro('bitacora')" style="margin-left:auto; padding:4px 12px; border:1px solid #003D7C; background:transparent; color:#003D7C; border-radius:6px; font-size:0.75rem; cursor:pointer;">
-              🔄 Actualizar
-            </button>
-          </div>
-          <input type="hidden" id="b-gps-lat" value="">
-          <input type="hidden" id="b-gps-lon" value="">
-          <div id="b-gps-link" style="display:none; margin-top:4px; font-size:0.75rem;">
-            <a id="b-gps-maps" href="#" target="_blank" style="color:#003D7C; text-decoration:none;">🗺️ Ver en Google Maps</a>
-          </div>
-        </div>
-
         <div class="form-group">
           <label for="b-supervisor">Supervisor UNISPAN <span class="req">*</span></label>
           <input type="text" id="b-supervisor" required placeholder="Nombre completo">
@@ -347,6 +331,47 @@
           placeholder="Nombre completo del representante del cliente">
       </div>
 
+      <div class="form-group">
+        <label for="firma-cargo">Cargo <span class="req">*</span></label>
+        <select id="firma-cargo" required>
+          <option value="">Selecciona cargo…</option>
+          <option value="Residente de Obra">Residente de Obra</option>
+          <option value="Superintendente">Superintendente</option>
+          <option value="Jefe de Obra">Jefe de Obra</option>
+          <option value="Gerente de Construcción">Gerente de Construcción</option>
+          <option value="Supervisor del Cliente">Supervisor del Cliente</option>
+          <option value="Administrador de Contrato">Administrador de Contrato</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="firma-empresa">Empresa del cliente <span class="req">*</span></label>
+        <input type="text" id="firma-empresa" required
+          placeholder="Nombre de la empresa contratante">
+      </div>
+
+      <!-- Toggle nota del cliente -->
+      <div class="toggle-group mt-12">
+        <label class="toggle-label" for="firma-toggle-notas">
+          El cliente desea agregar una nota
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="firma-toggle-notas" onchange="toggleNotasCliente()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div id="firma-notas-wrapper" class="hidden">
+        <div class="form-group mt-10">
+          <label for="firma-notas-cliente">Nota del cliente <span class="tag-opcional">(opcional)</span></label>
+          <textarea id="firma-notas-cliente" rows="3" maxlength="500"
+            placeholder="Observaciones, aclaraciones o reservas del cliente..."
+            oninput="actualizarContadorNotas()"></textarea>
+          <div class="char-counter"><span id="notas-contador">0</span> / 500 caracteres</div>
+        </div>
+      </div>
+
       <p class="firma-instruction">Traza tu firma en el recuadro de abajo</p>
 
       <div class="firma-container" id="firma-container">
@@ -470,22 +495,6 @@
         <div class="form-group">
           <label for="nc-contrato">No. de cotización</label>
           <input type="text" id="nc-contrato" placeholder="Ej: UNIS-2024-041">
-        </div>
-
-        <!-- Ubicación GPS -->
-        <div class="form-group" id="nc-gps-group">
-          <label><span style="color:#F5821F;">📍</span> Ubicación GPS</label>
-          <div id="nc-gps-display" style="display:flex; align-items:center; gap:8px; padding:10px; background:rgba(0,61,124,0.05); border:1px solid rgba(0,61,124,0.15); border-radius:8px; font-size:0.85rem; color:#666;">
-            <span id="nc-gps-status">Obteniendo ubicación...</span>
-            <button type="button" onclick="capturarGPSRegistro('nc')" style="margin-left:auto; padding:4px 12px; border:1px solid #003D7C; background:transparent; color:#003D7C; border-radius:6px; font-size:0.75rem; cursor:pointer;">
-              🔄 Actualizar
-            </button>
-          </div>
-          <input type="hidden" id="nc-gps-lat" value="">
-          <input type="hidden" id="nc-gps-lon" value="">
-          <div id="nc-gps-link" style="display:none; margin-top:4px; font-size:0.75rem;">
-            <a id="nc-gps-maps" href="#" target="_blank" style="color:#003D7C; text-decoration:none;">🗺️ Ver en Google Maps</a>
-          </div>
         </div>
 
         <div class="form-group">
