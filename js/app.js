@@ -337,23 +337,28 @@ const Pantallas = {
         return;
       }
 
-      const nombre  = document.getElementById('firma-nombre')?.value.trim()  || '';
-      const cargo   = document.getElementById('firma-cargo')?.value           || '';
-      const empresa = document.getElementById('firma-empresa')?.value.trim()  || '';
+      const nombreEl  = document.getElementById('firma-nombre');
+      const cargoEl   = document.getElementById('firma-cargo');
+      const empresaEl = document.getElementById('firma-empresa');
+
+      const nombre  = nombreEl?.value.trim()  || '';
+      const cargo   = cargoEl?.value           || '';
+      const empresa = empresaEl?.value.trim()  || '';
 
       if (!nombre) {
         Toast.show('Ingresa el nombre del firmante', 'warning');
-        document.getElementById('firma-nombre')?.focus();
+        nombreEl?.focus();
         return;
       }
-      if (!cargo) {
+      // Solo validar cargo y empresa si los campos existen en el DOM
+      if (cargoEl && !cargo) {
         Toast.show('Selecciona el cargo del firmante', 'warning');
-        document.getElementById('firma-cargo')?.focus();
+        cargoEl.focus();
         return;
       }
-      if (!empresa) {
+      if (empresaEl && !empresa) {
         Toast.show('Ingresa la empresa del cliente', 'warning');
-        document.getElementById('firma-empresa')?.focus();
+        empresaEl.focus();
         return;
       }
 
