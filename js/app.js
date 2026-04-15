@@ -485,24 +485,53 @@ const Pantallas = {
       }
     },
 
-    async compartirWhatsApp() {
+    async compartirPDF() {
       const { tipo, id } = State.registroActual;
-      const registro = tipo === 'nc' ? await NCDB.getById(id) : await BitacoraDB.getById(id);
-      const texto = encodeURIComponent(
-        `Adjunto ${tipo === 'nc' ? 'No Conformidad' : 'Bitácora'} ${registro?.folio || ''} ` +
-        `— Obra: ${registro?.obra || '—'} ` +
-        `— UNISPAN México`
-      );
-      window.open(`https://wa.me/?text=${texto}`, '_blank');
+      Loading.show('Generando PDF…');
+      try {
+        const registro = tipo === 'nc' ? await NCDB.getById(id) : await BitacoraDB.getById(id);
+        const folio  = registro?.folio || `${tipo}_${id}`;
+        const obra   = (registro?.obra || 'obra')
+          .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-]/g, '').trim().slice(0, 30);
+        const nombre = `${folio}_${obra}.pdf`;
+        const textoDesc = `${tipo === 'nc' ? 'No Conformidad' : 'Bitácora'} ${folio} — ${registro?.obra || ''} — UNISPAN México`;
+
+        const blob = await PDFGen.obtenerBlob(tipo, id);
+        const file = new File([blob], nombre, { type: 'application/pdf' });
+
+        // Intentar Web Share API con archivo (Android Chrome, iOS Safari 15+)
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: nombre, text: textoDesc });
+          Toast.show('PDF compartido', 'success');
+          return;
+        }
+
+        // Fallback Web Share sin archivo (solo texto + URL)
+        if (navigator.share) {
+          await navigator.share({ title: nombre, text: textoDesc, url: window.location.href });
+          Toast.show('Enlace compartido', 'success');
+          return;
+        }
+
+        // Fallback final: descarga directa
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href = url; a.download = nombre; a.click();
+        URL.revokeObjectURL(url);
+        Toast.show('PDF descargado — compártelo desde tu carpeta de descargas', 'info', 5000);
+
+      } catch(e) {
+        if (e?.name !== 'AbortError') {
+          Toast.show('Error al compartir: ' + (e?.message || e), 'error');
+        }
+      } finally {
+        Loading.hide();
+      }
     },
 
-    async enviarCorreo() {
-      const { tipo, id } = State.registroActual;
-      const registro = tipo === 'nc' ? await NCDB.getById(id) : await BitacoraDB.getById(id);
-      const asunto  = encodeURIComponent(`${tipo === 'nc' ? 'NC' : 'Bitácora'} ${registro?.folio || ''} — ${registro?.obra || ''}`);
-      const cuerpo  = encodeURIComponent(`Estimado,\n\nAdjunto el documento de ${tipo === 'nc' ? 'No Conformidad' : 'Bitácora de Supervisión'} correspondiente a la obra "${registro?.obra || ''}".\n\nAtentamente,\n${registro?.supervisor || 'UNISPAN México'}`);
-      window.location.href = `mailto:?subject=${asunto}&body=${cuerpo}`;
-    }
+    // Alias retrocompatibles
+    compartirWhatsApp() { return Pantallas.pdfPreview.compartirPDF(); },
+    enviarCorreo()       { return Pantallas.pdfPreview.compartirPDF(); }
   },
 
   /* ── NO CONFORMIDAD FORM ─────────────────────────── */
