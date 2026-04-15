@@ -331,60 +331,65 @@ const Pantallas = {
     },
 
     async confirmar() {
+      // ── Validaciones previas ──────────────────────────
       if (SignaturePad.estaVacia()) {
         Toast.show('Por favor firma antes de continuar', 'warning');
         return;
       }
 
-      const nombre  = document.getElementById('firma-nombre').value.trim();
-      const cargo   = document.getElementById('firma-cargo').value;
-      const empresa = document.getElementById('firma-empresa').value.trim();
+      const nombre  = document.getElementById('firma-nombre')?.value.trim()  || '';
+      const cargo   = document.getElementById('firma-cargo')?.value           || '';
+      const empresa = document.getElementById('firma-empresa')?.value.trim()  || '';
 
       if (!nombre) {
         Toast.show('Ingresa el nombre del firmante', 'warning');
-        document.getElementById('firma-nombre').focus();
+        document.getElementById('firma-nombre')?.focus();
         return;
       }
       if (!cargo) {
         Toast.show('Selecciona el cargo del firmante', 'warning');
-        document.getElementById('firma-cargo').focus();
+        document.getElementById('firma-cargo')?.focus();
         return;
       }
       if (!empresa) {
         Toast.show('Ingresa la empresa del cliente', 'warning');
-        document.getElementById('firma-empresa').focus();
+        document.getElementById('firma-empresa')?.focus();
         return;
       }
 
-      // Captura GPS silenciosa — máximo 5 segundos, nunca bloquea
-      const gps = await new Promise((resolve) => {
-        if (!navigator.geolocation) { resolve(null); return; }
-        const timer = setTimeout(() => resolve(null), 5000);
-        navigator.geolocation.getCurrentPosition(
-          (pos) => { clearTimeout(timer); resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }); },
-          ()    => { clearTimeout(timer); resolve(null); },
-          { timeout: 5000, maximumAge: 30000, enableHighAccuracy: false }
-        );
-      });
+      // ── Loading inmediato — usuario ve respuesta al instante ──
+      Loading.show('Procesando firma…');
 
-      // Hash SHA-256 del registro en este momento exacto, antes de agregar la firma
-      let documentoHash = null;
       try {
-        const tipo = State.registroActual.tipo;
-        const registroSnap = tipo === 'bitacora'
-          ? await BitacoraDB.getById(State.registroActual.id)
-          : await NCDB.getById(State.registroActual.id);
-        const jsonBytes = new TextEncoder().encode(JSON.stringify(registroSnap));
-        const hashBuffer = await crypto.subtle.digest('SHA-256', jsonBytes);
-        documentoHash = Array.from(new Uint8Array(hashBuffer))
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-      } catch(e) {
-        console.warn('Hash SHA-256 no disponible:', e);
-      }
+        // Captura GPS silenciosa — máximo 5 s, nunca bloquea
+        const gps = await new Promise((resolve) => {
+          if (!navigator.geolocation) { resolve(null); return; }
+          const timer = setTimeout(() => resolve(null), 5000);
+          navigator.geolocation.getCurrentPosition(
+            (pos) => { clearTimeout(timer); resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }); },
+            ()    => { clearTimeout(timer); resolve(null); },
+            { timeout: 5000, maximumAge: 30000, enableHighAccuracy: false }
+          );
+        });
 
-      Loading.show('Guardando firma…');
-      try {
+        // Hash SHA-256 del registro antes de agregar la firma
+        let documentoHash = null;
+        try {
+          const tipoHash = State.registroActual.tipo;
+          const registroSnap = tipoHash === 'bitacora'
+            ? await BitacoraDB.getById(State.registroActual.id)
+            : await NCDB.getById(State.registroActual.id);
+          const jsonBytes  = new TextEncoder().encode(JSON.stringify(registroSnap));
+          const hashBuffer = await crypto.subtle.digest('SHA-256', jsonBytes);
+          documentoHash = Array.from(new Uint8Array(hashBuffer))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+        } catch(hashErr) {
+          console.warn('Hash SHA-256 no disponible:', hashErr);
+        }
+
+        Loading.show('Guardando firma…');
+
         const pngDataURL = SignaturePad.exportarPNG();
 
         const notasCliente = document.getElementById('firma-toggle-notas')?.checked
@@ -416,17 +421,19 @@ const Pantallas = {
 
         await FirmaDB.save(firmaData);
 
-        // Marcar como firmado
+        // Marcar bitácora como firmada
         if (State.registroActual.tipo === 'bitacora') {
           const b = await BitacoraDB.getById(State.registroActual.id);
           if (b) { b.estado_registro = 'firmado'; await BitacoraDB.save(b); }
         }
 
         State.firmaActual = firmaData;
-        Toast.show('Firma confirmada', 'success');
+        Toast.show('Firma confirmada ✓', 'success');
         AppRouter.irA('pdf-preview', State.registroActual.id);
+
       } catch(e) {
-        Toast.show('Error al guardar firma: ' + e.message, 'error');
+        console.error('Error en confirmar firma:', e);
+        Toast.show('Error al guardar firma: ' + (e?.message || e), 'error', 5000);
       } finally {
         Loading.hide();
       }
