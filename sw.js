@@ -4,7 +4,7 @@
    BASE_URL se resuelve dinámicamente desde self.location
    ===================================================== */
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const CACHE_NAME    = `unispan-bitacora-${CACHE_VERSION}`;
 
 // ── Ruta base dinámica ──────────────────────────────
@@ -75,6 +75,8 @@ self.addEventListener('activate', event => {
         )
       )
       .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window' }))
+      .then(clients => clients.forEach(c => c.postMessage({ type: 'SW_UPDATED' })))
   );
 });
 
@@ -92,24 +94,21 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   if (!event.request.url.startsWith('http'))  return;
 
-  // ── Solicitudes de navegación (carga inicial de la SPA) ──
+  // ── Solicitudes de navegación — Network-First ──────────
+  // Con internet: siempre trae HTML fresco del servidor (garantiza versión nueva)
+  // Sin internet: sirve desde caché (modo offline)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      // 1. Intentar caché → funciona offline
-      caches.match(BASE + 'index.html')
-        .then(cached => {
-          if (cached) return cached;
-          // 2. Sin caché → red
-          return fetch(BASE + 'index.html')
-            .then(res => {
-              if (res && res.ok) {
-                caches.open(CACHE_NAME)
-                  .then(c => c.put(BASE + 'index.html', res.clone()));
-              }
-              return res;
-            });
+      fetch(BASE + 'index.html', { cache: 'no-cache' })
+        .then(res => {
+          if (res && res.ok) {
+            // Actualiza caché con la versión nueva
+            caches.open(CACHE_NAME).then(c => c.put(BASE + 'index.html', res.clone()));
+            return res;
+          }
+          return caches.match(BASE + 'index.html');
         })
-        .catch(() => caches.match(BASE + 'index.html')) // último recurso
+        .catch(() => caches.match(BASE + 'index.html')) // offline: sirve caché
     );
     return;
   }

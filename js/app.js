@@ -1055,6 +1055,13 @@ async function registrarSW() {
       window.location.reload();
     });
 
+    // El SW avisa cuando se activa (funciona incluso con app.js viejo en memoria)
+    navigator.serviceWorker.addEventListener('message', event => {
+      if (event.data?.type === 'SW_UPDATED') {
+        window.location.reload();
+      }
+    });
+
     reg.addEventListener('updatefound', () => {
       const newWorker = reg.installing;
       newWorker.addEventListener('statechange', () => {
