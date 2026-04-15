@@ -1049,14 +1049,27 @@ async function registrarSW() {
   if (!('serviceWorker' in navigator)) return;
   try {
     const reg = await navigator.serviceWorker.register('./sw.js');
+
+    // Cuando el nuevo SW toma control → recargar automáticamente
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload();
+    });
+
     reg.addEventListener('updatefound', () => {
       const newWorker = reg.installing;
       newWorker.addEventListener('statechange', () => {
         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          Toast.show('Nueva versión disponible. Recarga para actualizar.', 'info', 8000);
+          // Forzar activación inmediata sin esperar a que el usuario cierre pestañas
+          newWorker.postMessage({ type: 'SKIP_WAITING' });
         }
       });
     });
+
+    // Si ya hay una actualización esperando al abrir la app
+    if (reg.waiting) {
+      reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+
   } catch(e) {
     console.warn('SW registro fallido:', e);
   }
